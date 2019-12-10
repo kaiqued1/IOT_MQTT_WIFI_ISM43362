@@ -7,11 +7,11 @@
         },
          "wifi-ssid": {
             "help": "WiFi SSID",
-            "value": "\"SSID\""
+            "value": "\"cornetlin\""
         },
         "wifi-password": {
             "help": "WiFi Password",
-            "value": "\"PASSWORD\""
+            "value": "\"tp67650421\""
         },
         "api-key":{
             "help":  "REST API Key for Treasure Data",
