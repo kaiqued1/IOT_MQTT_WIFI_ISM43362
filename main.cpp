@@ -9,10 +9,16 @@
 #include "MQTTNetwork.h"
 #include "MQTTmbed.h"
 #include "MQTTClient.h"
-
+#include "HTS221Sensor.h"
+//#define MQTT_HOST               "demo.thingsboard.io"
+#define MQTT_HOST               "192.168.43.14"
+#define MQTT_PORT               1883
+#define MQTT_TOPIC              "Pubtest"
+#include <string>
+#include "VL53L0X.h"
 ISM43362Interface net;
 // WiFiInterface *wifi;
-
+Serial pc(USBTX,USBRX);
 void messageArrived(MQTT::MessageData& md)
 {
     MQTT::Message &message = md.message;
@@ -20,9 +26,17 @@ void messageArrived(MQTT::MessageData& md)
     logMessage("Payload %.*s\r\n", message.payloadlen, (char*)message.payload);
     //++arrivedcount;
 }
+static DevI2C devI2c(PB_11,PB_10);
+static DigitalOut shutdown_pin(PC_6);
+static VL53L0X range(&devI2c, &shutdown_pin, PC_7);
+Serial uart(PC_4, PC_5);//TX,RX
 
+int idx=0;
+std::string inputdata;
+char ch1;
 int main(void){
-
+    uart.baud(115200);
+    range.init_sensor(VL53L0X_DEFAULT_ADDRESS);
     int count = 0;
 
     printf("\r\nWiFi+MQTT Example Demo\n");
@@ -50,7 +64,7 @@ int main(void){
     char* subscribetopic = "subscribtest";
 
     logMessage("HelloMQTT: version is %.2f\r\n", version);
-
+    char assess_token[] = "uNYseQgqntIrL7q5F2tL";
     NetworkInterface* network = &net;
     if (!network) {
         return -1;
@@ -60,18 +74,18 @@ int main(void){
 
     MQTT::Client<MQTTNetwork, Countdown> client(mqttNetwork);
 
-    const char* hostname = "192.168.0.120";
-    int port = 1883;
+    const char* hostname = MQTT_HOST;
+    int port = MQTT_PORT;
     logMessage("Connecting to %s:%d\r\n", hostname, port);
     int rc = mqttNetwork.connect(hostname, port);
     if (rc != 0)
         logMessage("rc from TCP connect is %d\r\n", rc);
 
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
-    data.MQTTVersion = 3;
+    //data.MQTTVersion = 3;
     data.clientID.cstring = "mbed-sample";
-    data.username.cstring = "testuser";
-    data.password.cstring = "testpassword";
+    data.username.cstring = assess_token;
+    //data.password.cstring = "";
     if ((rc = client.connect(data)) != 0)
         logMessage("rc from MQTT connect is %d\r\n", rc);
 
@@ -81,28 +95,67 @@ int main(void){
         logMessage("rc from MQTT subscribe is %d\r\n", rc);
    
 
-    // Get device health data, send to Treasure Data every 10 seconds
-    while(1){
+    
+    printf("successfully connect!\n\n");
+    
+    // Initialize sensors --------------------------------------------------
+
+    //uint8_t id;
+   //DevI2C i2c_2(PB_11, PB_10);
+    //HTS221Sensor hum_temp(&i2c_2);
+
+   // hum_temp.init(NULL);
+    //hum_temp.enable();
+    //hum_temp.read_id(&id);
+   
+ //printf("HTS221  humidity & temperature sensor = 0x%X\r\n", id);
+ //std::string inputdata;
+ //inputdata="{\"PM2.5\":10,\"PM10\":20,\"temperature\":20,\"humidity\":45}";
+  while (1) {
+     
+     //buffer variables
+char ch;
+//if data is ready in the buffer
+while (uart.readable()) {
+//read 1 character
+
+ch = uart.getc();
+//pc.printf("datacomming:%c",ch);
+/////Pm25///////
+
+if (ch == 's') {
+//so the pointer should be set to the first position
+inputdata.clear();
+//pc.printf("start string");
+}
+//write buffer character to big buffer string
+inputdata += ch;
+//pc.printf("input string:%s",inputdata);
+//if the character is # than the end of the sentence is
+//reached and some stuff has to be done
+if (ch == '#') {
+//remove start and stop characters
+inputdata.erase(0,1);
+inputdata.erase(inputdata.length()-1,1);
+pc.printf("%s",inputdata);
+char msg[inputdata.size()+1];
+            inputdata.copy(msg,inputdata.size()+1);
+            msg[inputdata.size()]='\0';
+            int n=strlen(msg); 
+        void *payload = reinterpret_cast<void*>(msg);
+        size_t payload_len = n;
+
+        printf("publish to: %s %d %s\r\n", MQTT_HOST, MQTT_PORT, MQTT_TOPIC);
+
+        if (client.publish(MQTT_TOPIC, payload, n) < 0) {
+            printf("failed to publish MQTT message");
+        }
+        }
+}
+         
+}
         
-        printf("\test\n");
-         MQTT::Message message;
-
-    // QoS 0
-    char buf[100];
-    sprintf(buf, "Hello World!  QoS 0 message from app version %f\r\n", version);
-    message.qos = MQTT::QOS0;
-    message.retained = false;
-    message.dup = false;
-    message.payload = (void*)buf;
-    message.payloadlen = strlen(buf)+1;
-    rc = client.publish(publishtopic, message);
-    client.yield(100);
-
-
-    //int x = 0;
-        wait(1);
-
-    }
+    
 
    // net.disconnect();
 
