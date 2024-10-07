@@ -44,7 +44,7 @@ int main(void){
     printf("Gateway: %s\n", net.get_gateway());
     printf("RSSI: %d\n\n", net.get_rssi());
 
-    printf("\Wifi Example Done,MQTT Example Start\n");
+    printf("Wifi Example Done,MQTT Example Start\n");
   
     char assess_token[] = "GlQH3wvUfpEFM9EYabgO";
     NetworkInterface* network = &net;
